@@ -6,6 +6,7 @@ export type RootStackParamList = {
   Register: undefined;
   ChatRoom: { roomName: string };
   RoomList: undefined;
+  RoomMembers: { roomName: string };
 };
 
 
@@ -69,4 +70,12 @@ export type Message = {
 export type MessageOpt = {
     type: MessageOptType,
     uuid: number
+}
+
+export type RoomMember = {
+    userId: string;
+    username: string;
+    avatar?: string;
+    isOnline: boolean;
+    lastSeen?: number;
 }

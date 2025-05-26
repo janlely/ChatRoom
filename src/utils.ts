@@ -33,3 +33,9 @@ export const uniqueByProperty = (items: any[], propGetter: (_: any) => any): any
     }
   });
 }
+
+export function removeLastCharacter(str: string): string {
+    const characters = Array.from(str); // 将字符串转化为字符数组
+    characters.pop(); // 移除最后一个字符
+    return characters.join(''); // 将剩余的字符数组合并成字符串
+}

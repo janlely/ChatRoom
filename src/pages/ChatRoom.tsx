@@ -9,9 +9,15 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
+  TouchableWithoutFeedback
 } from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import Ionicons from '@react-native-vector-icons/ionicons';
+import FeatherIcon from '@react-native-vector-icons/feather';
 import { NavigationProps } from '../Types';
+import { EmojiKeyboard, EmojiType } from 'rn-emoji-keyboard';
+import { removeLastCharacter } from '../utils';
+
 
 type Message = {
   id: string;
@@ -50,6 +56,9 @@ export default function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
   const { roomName } = route.params;
   const [messages, setMessages]: [Message[], Dispatch<SetStateAction<Message[]>>] = useState(initialMessages);
   const [newMessage, setNewMessage]: [string, Dispatch<SetStateAction<string>>] = useState('');
+  const [openEmojiPicker, setOpenEmojiPicker] = React.useState(false);
+
+
 
   const sendMessage = () => {
     if (newMessage.trim() === '') return;
@@ -85,52 +94,80 @@ export default function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
     </View>
   );
 
+  const handleEmojiPick = (emoji: EmojiType) => {
+    console.log(emoji);
+    setNewMessage(pre => pre + emoji.emoji)
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="black" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{roomName}</Text>
-        <TouchableOpacity>
-          <View style={styles.profileIcon}>
-            <Ionicons name="person" size={24} color="white" />
-          </View>
-        </TouchableOpacity>
-      </View>
-      
-      <FlatList
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item: Message) => item.id}
-        contentContainerStyle={styles.messagesList}
-      />
-      
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Type a message"
-            value={newMessage}
-            onChangeText={setNewMessage}
-            autoCorrect={false}
-            autoCapitalize="none"
-            underlineColorAndroid="transparent"
-          />
-          <TouchableOpacity style={styles.emojiButton}>
-            <Ionicons name="happy-outline" size={24} color="#6B9AE8" />
+    <TouchableWithoutFeedback onPress={() => setOpenEmojiPicker(false)}>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color="black" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.micButton}>
-            <Ionicons name="mic-outline" size={24} color="#6B9AE8" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-            <Ionicons name="send" size={24} color="#6B9AE8" />
+          <Text style={styles.headerTitle}>{roomName}</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('RoomMembers', { roomName })}>
+            <View style={styles.profileIcon}>
+              <Ionicons name="people" size={24} color="white" />
+            </View>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        
+        <FlatList
+          data={messages}
+          renderItem={renderMessage}
+          keyExtractor={(item: Message) => item.id}
+          contentContainerStyle={styles.messagesList}
+        />
+        
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Type a message"
+              value={newMessage}
+              onChangeText={setNewMessage}
+              autoCorrect={false}
+              autoCapitalize="none"
+              underlineColorAndroid="transparent"
+              onFocus={() => {setOpenEmojiPicker(false)}}
+            />
+            <TouchableOpacity
+              style={styles.emojiButton}
+              onPress={() => {setOpenEmojiPicker(true);Keyboard.dismiss()}}
+            >
+              <Ionicons name="happy-outline" size={24} color="#6B9AE8" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.micButton}>
+              <Ionicons name="mic-outline" size={24} color="#6B9AE8" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+              <Ionicons name="send" size={24} color="#6B9AE8" />
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+        {openEmojiPicker &&
+          <View style={{height: 300}}>
+            <EmojiKeyboard
+              onEmojiSelected={handleEmojiPick}
+              allowMultipleSelections={true}
+              categoryPosition="top"
+              customButtons={[
+                <TouchableOpacity
+                  onPress={() => { setNewMessage(pre => removeLastCharacter(pre)) }}
+                  activeOpacity={newMessage.length > 0 ? 0.5 : 1}
+                >
+                  <FeatherIcon name="delete" size={24} color={newMessage.length > 0 ? "#6B9AE8" : "lightgray"} />
+                </TouchableOpacity>
+              ]}
+            />
+          </View>
+        }
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 

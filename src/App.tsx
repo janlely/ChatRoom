@@ -12,6 +12,7 @@ import { setLanguage } from './Storage';
 import Register from './pages/Register';
 import RoomList from './pages/RoomList';
 import ChatRoom from './pages/ChatRoom';
+import RoomMembers from './pages/RoomMembers';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -48,6 +49,11 @@ const App = () => {
             <Stack.Screen
               name="ChatRoom"
               component={ChatRoom}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="RoomMembers"
+              component={RoomMembers}
               options={{ headerShown: false }}
             />
           </Stack.Navigator>

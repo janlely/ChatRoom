@@ -7,12 +7,17 @@ const resources = {
   en: {
     translation: {
       //Shared
-
+      online: 'Online',
+      offline: 'Offline',
+      searchMembers: 'Search members...',
     }
   },
   zh: {
     translation: {
       //Shared
+      online: '在线',
+      offline: '离线',
+      searchMembers: '搜索成员...',
     }
   }
 };

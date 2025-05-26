@@ -11,16 +11,8 @@ import {
   Image,
 } from 'react-native';
 import { NavigationProps } from '../Types';
+import EntypoIcons from '@react-native-vector-icons/entypo';
 
-const ChatifyLogo = () => (
-  <View style={styles.logoContainer}>
-    <View style={styles.logoIcon}>
-      <View style={styles.bubble1} />
-      <View style={styles.bubble2} />
-    </View>
-    <Text style={styles.logoText}>Chatify</Text>
-  </View>
-);
 
 type RegisterProps = NavigationProps<'Register'>
 export default function RegisterScreen({ navigation }: RegisterProps) {
@@ -39,7 +31,10 @@ export default function RegisterScreen({ navigation }: RegisterProps) {
         style={styles.keyboardAvoidingView}
       >
         <View style={styles.content}>
-          <ChatifyLogo />
+          <View style={styles.logoContainer}>
+            <EntypoIcons name="chat" size={40} color="#6B9AE8" />
+            <Text style={styles.logoText}>Chatify</Text>
+          </View>
           
           <Text style={styles.title}>Register</Text>
           
@@ -95,6 +90,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 40,
+    gap: 10,
   },
   logoIcon: {
     position: 'relative',
