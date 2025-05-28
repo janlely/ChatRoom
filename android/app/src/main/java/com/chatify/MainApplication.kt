@@ -1,4 +1,4 @@
-package com.whisperapp
+package com.chatify
 
 import android.app.Application
 import com.facebook.react.PackageList

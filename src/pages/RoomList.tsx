@@ -9,13 +9,12 @@ import {
   FlatList,
 } from 'react-native';
 import { NavigationProps } from '../Types';
+import EntypoIcons from '@react-native-vector-icons/entypo';
+import BottomNavigation from '../components/BottomNavigation';
 
 const ChatifyLogo = () => (
   <View style={styles.logoContainer}>
-    <View style={styles.logoIcon}>
-      <View style={styles.bubble1} />
-      <View style={styles.bubble2} />
-    </View>
+    <EntypoIcons name="chat" size={40} color="#6B9AE8" />
     <Text style={styles.logoText}>Chatify</Text>
   </View>
 );
@@ -83,23 +82,27 @@ export default function ChatRoomsScreen({ navigation }: RoomListProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <ChatifyLogo />
-      </View>
-      
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search chat rooms..."
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <ChatifyLogo />
+        </View>
+        
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search chat rooms..."
+          />
+        </View>
+        
+        <FlatList
+          data={chatRooms}
+          renderItem={renderChatRoom}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.chatRoomsList}
         />
       </View>
       
-      <FlatList
-        data={chatRooms}
-        renderItem={renderChatRoom}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.chatRoomsList}
-      />
+      <BottomNavigation navigation={navigation} currentRoute="RoomList" />
     </SafeAreaView>
   );
 }
@@ -109,6 +112,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'white',
   },
+  content: {
+    flex: 1,
+  },
   header: {
     padding: 16,
     borderBottomWidth: 1,
@@ -117,6 +123,7 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
   logoIcon: {
     position: 'relative',

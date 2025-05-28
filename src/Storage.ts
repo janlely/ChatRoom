@@ -43,7 +43,7 @@ type ResultSet = {
 const openDatabase = (): Promise<Database> => {
   return new Promise((resolve, reject) => {
     const db = SQLite.openDatabase(
-      { name: 'WhisperApp.db', location: 'default' },
+      { name: 'Chatify.db', location: 'default' },
       () => {
         console.log('Database opened successfully');
         resolve(db);
@@ -110,6 +110,9 @@ const upgradeDatabase = async (tx: Transaction, fromVersion: number): Promise<bo
 
       tx.executeSql(`DROP TABLE IF EXISTS kv`);
       tx.executeSql(`DROP TABLE IF EXISTS messages`);
+      tx.executeSql(`DROP TABLE IF EXISTS users`);
+      tx.executeSql(`DROP TABLE IF EXISTS current_user`);
+      
       // 顺序执行建表SQL
       tx.executeSql(`
           CREATE TABLE kv (
@@ -117,7 +120,7 @@ const upgradeDatabase = async (tx: Transaction, fromVersion: number): Promise<bo
               key TEXT NOT NULL,
               value TEXT NOT NULL
           );
-        )`);
+        `);
 
       tx.executeSql(`
           CREATE TABLE messages (
@@ -132,10 +135,30 @@ const upgradeDatabase = async (tx: Transaction, fromVersion: number): Promise<bo
               is_sender INT NOT NULL,
               quote UNSIGNED INT NOT NULL DEFAULT 0
           );
-        )`);
+        `);
+
+      tx.executeSql(`
+          CREATE TABLE users (
+              id TEXT PRIMARY KEY,
+              username TEXT NOT NULL,
+              avatar TEXT,
+              created_at INTEGER NOT NULL
+          );
+        `);
+
+      tx.executeSql(`
+          CREATE TABLE current_user (
+              id TEXT PRIMARY KEY,
+              username TEXT NOT NULL,
+              avatar TEXT,
+              last_login INTEGER NOT NULL
+          );
+        `);
+
       tx.executeSql(`CREATE UNIQUE INDEX 'uniq_rum' ON messages (room_id, username, msg_id);`);
       tx.executeSql(`CREATE INDEX 'idx_ru' ON messages (room_id, uuid);`);
       tx.executeSql(`CREATE UNIQUE INDEX 'idx_k' ON kv (key);`);
+      tx.executeSql(`CREATE UNIQUE INDEX 'idx_username' ON users (username);`);
 
       console.log('Tables created successfully');
       toVersion += 1;
@@ -458,13 +481,10 @@ export async function getImagesMessages(roomId: string): Promise<Message[]> {
 
 
 export async function setAvatar(username: string, avatar: string): Promise<string> {
-  if (avatar.startsWith('http')) {
-    const avatarUrl = await Net.downloadFile(avatar, "avatar", "avatar")
-    await setValue(`avatar_${username}`, avatarUrl)
-    avatarMap.set(username, avatarUrl)
-    return avatarUrl
-  }
-  return avatar
+  // 简化版本：直接保存 avatar URL，不下载文件
+  await setValue(`avatar_${username}`, avatar);
+  avatarMap.set(username, avatar);
+  return avatar;
 }
 
 
@@ -478,6 +498,124 @@ export async function getAvatar(username: string): Promise<string> {
   }
   avatarMap.set(username, avatar)
   return avatar
+}
+
+export type User = {
+  id: string;
+  username: string;
+  avatar?: string;
+};
+
+export async function saveUser(user: User): Promise<void> {
+  await initDatabase();
+  return new Promise((resolve, reject) => {
+    db.transaction((tx: Transaction) => {
+      tx.executeSql(
+        `INSERT OR REPLACE INTO users (id, username, avatar, created_at) VALUES (?, ?, ?, ?)`,
+        [user.id, user.username, user.avatar || null, Date.now()],
+        () => resolve(),
+        (_, error) => {
+          console.error('Failed to save user:', error);
+          reject(error);
+          return false;
+        }
+      );
+    });
+  });
+}
+
+export async function getCurrentUser(): Promise<User | null> {
+  await initDatabase();
+  return new Promise((resolve, reject) => {
+    db.transaction((tx: Transaction) => {
+      tx.executeSql(
+        `SELECT id, username, avatar FROM current_user LIMIT 1`,
+        [],
+        (_, result: ResultSet) => {
+          if (result.rows.length > 0) {
+            const row = result.rows.item(0);
+            resolve({
+              id: row.id,
+              username: row.username,
+              avatar: row.avatar
+            });
+          } else {
+            resolve(null);
+          }
+        },
+        (_, error) => {
+          console.error('Failed to get current user:', error);
+          reject(error);
+          return false;
+        }
+      );
+    });
+  });
+}
+
+export async function setCurrentUser(user: User): Promise<void> {
+  await initDatabase();
+  return new Promise((resolve, reject) => {
+    db.transaction((tx: Transaction) => {
+      tx.executeSql(
+        `INSERT OR REPLACE INTO current_user (id, username, avatar, last_login) VALUES (?, ?, ?, ?)`,
+        [user.id, user.username, user.avatar || null, Date.now()],
+        () => resolve(),
+        (_, error) => {
+          console.error('Failed to set current user:', error);
+          reject(error);
+          return false;
+        }
+      );
+    });
+  });
+}
+
+export async function getAvailableUsers(): Promise<User[]> {
+  await initDatabase();
+  return new Promise((resolve, reject) => {
+    db.transaction((tx: Transaction) => {
+      tx.executeSql(
+        `SELECT id, username, avatar FROM users ORDER BY created_at DESC`,
+        [],
+        (_, result: ResultSet) => {
+          const users: User[] = [];
+          for (let i = 0; i < result.rows.length; i++) {
+            const row = result.rows.item(i);
+            users.push({
+              id: row.id,
+              username: row.username,
+              avatar: row.avatar
+            });
+          }
+          resolve(users);
+        },
+        (_, error) => {
+          console.error('Failed to get available users:', error);
+          reject(error);
+          return false;
+        }
+      );
+    });
+  });
+}
+
+export async function clearCurrentUser(): Promise<void> {
+  await initDatabase();
+  return new Promise((resolve, reject) => {
+    db.transaction((tx: Transaction) => {
+      tx.executeSql(
+        `DELETE FROM current_user`,
+        [],
+        () => resolve(),
+        (_, error) => {
+          console.error('Failed to clear current user:', error);
+          reject(error);
+          return false;
+        }
+      );
+    });
+  });
 }
 
 

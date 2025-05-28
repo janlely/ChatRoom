@@ -1,17 +1,20 @@
 interface WebSocketMessage {
-  type: 'auth' | 'ping' | 'pong' | 'message' | 'auth_response';
-  payload?: string;
-  token?: string;
+  msgId?: number;
+  type: 'register' | 'login' | 'auth' | 'pingpong' | 'message' | 'getCurrentUser' | 'getAvailableUsers' | 'logout' | 'changeUser';
+  payload?: any;
 }
 
 interface WebSocketClient {
-  connect: (url: string, token: string) => void;
-  sendMessage: (message: string) => void;
-  onMessage: (callback: (message: string) => void) => void;
+  connect: (url: string) => Promise<ConnectedWebSocketClient>;
+}
+
+interface ConnectedWebSocketClient {
+  sendMessage: (message: WebSocketMessage, callback?: MessageCallback) => void;
   disconnect: () => void;
 }
 
 let client: WebSocketClient | null = null;
+let messageCallbackMap: Map<number, MessageCallback> = new Map();
 
 export const getWebSocketClient = (): WebSocketClient => {
   if (!client) {
@@ -20,65 +23,78 @@ export const getWebSocketClient = (): WebSocketClient => {
   return client;
 };
 
+type MessageCallback = (response: WebSocketMessage) => void;
+
 const createWebSocketClient = (): WebSocketClient => {
   let ws: WebSocket | null = null;
   let heartbeatInterval: NodeJS.Timeout | null = null;
-  let messageCallback: ((message: string) => void) | null = null;
+  let msgId = 0;
 
-  const connect = (url: string, token: string) => {
-    ws = new WebSocket(url);
-
-    ws.onopen = () => {
-      console.log('WebSocket Connected');
-      // 发送身份认证消息
-      const authMessage: WebSocketMessage = { type: 'auth', token };
-      ws?.send(JSON.stringify(authMessage));
-
-      // 启动心跳机制
-      heartbeatInterval = setInterval(() => {
-        if (ws?.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'ping' }));
-        }
-      }, 30000);
-    };
-
-    ws.onmessage = (event: WebSocketMessageEvent) => {
-      try {
-        const data: WebSocketMessage = JSON.parse(event.data);
-        if (data.type === 'pong') {
-          console.log('Received pong');
-        } else if (data.type === 'message' && data.payload) {
-          messageCallback?.(data.payload);
-        } else if (data.type === 'auth_response') {
-          console.log('Auth response:', data.payload);
-        }
-      } catch (error) {
-        console.error('Error parsing message:', error);
+  const connect = async (url: string): Promise<ConnectedWebSocketClient> => {
+    console.log('Before connect - messageCallbackMap:', messageCallbackMap);
+    return new Promise((resolve, reject) => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        resolve({
+          sendMessage,
+          disconnect
+        });
+        return;
       }
-    };
+      ws = new WebSocket(url);
+      ws.onopen = () => {
+        console.log('WebSocket Connected');
+        resolve({
+          sendMessage,
+          disconnect
+        });
+      };
 
-    ws.onerror = (error: Event) => {
-      console.error('WebSocket Error:', error);
-    };
+      ws.onmessage = (event: WebSocketMessageEvent) => {
+        try {
+          const data: WebSocketMessage = JSON.parse(event.data);
+          console.log('Received message:', data);
+          console.log('Current messageCallbackMap size:', messageCallbackMap.size);
+          console.log('MessageCallbackMap entries:', Array.from(messageCallbackMap.entries()));
+          let callback = messageCallbackMap.get(data.msgId!);
+          console.log('Found callback for msgId', data.msgId, ':', callback ? 'yes' : 'no');
+          if (callback) {
+            callback(data);
+            messageCallbackMap.delete(data.msgId!);
+            console.log('After callback execution - messageCallbackMap size:', messageCallbackMap.size);
+            console.log('MessageCallbackMap entries:', Array.from(messageCallbackMap.entries()));
+          }
+        } catch (error) {
+          console.error('Error parsing message:', error);
+        }
+      };
 
-    ws.onclose = () => {
-      console.log('WebSocket Disconnected');
-      if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-        heartbeatInterval = null;
-      }
-    };
+      ws.onerror = (error: Event) => {
+        console.error('WebSocket Error:', error);
+        reject(error);
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket Disconnected');
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval);
+          heartbeatInterval = null;
+        }
+      };
+    });
   };
 
-  const sendMessage = (message: string) => {
+  const sendMessage = (message: WebSocketMessage, callback?: MessageCallback) => {
+    console.log('Before sendMessage - messageCallbackMap size:', messageCallbackMap.size);
     if (ws && ws.readyState === WebSocket.OPEN && message) {
-      const msg: WebSocketMessage = { type: 'message', payload: message };
-      ws.send(JSON.stringify(msg));
+      msgId++
+      console.log('Current msgId:', msgId);
+      if (callback) {
+        messageCallbackMap.set(msgId, callback)
+        console.log('After setting callback - messageCallbackMap size:', messageCallbackMap.size);
+        console.log('MessageCallbackMap entries:', Array.from(messageCallbackMap.entries()));
+      };
+      ws.send(JSON.stringify({...message, msgId: msgId}));
     }
-  };
-
-  const onMessage = (callback: (message: string) => void) => {
-    messageCallback = callback;
   };
 
   const disconnect = () => {
@@ -92,5 +108,5 @@ const createWebSocketClient = (): WebSocketClient => {
     }
   };
 
-  return { connect, sendMessage, onMessage, disconnect };
+  return { connect };
 };

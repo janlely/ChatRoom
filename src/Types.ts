@@ -4,9 +4,11 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 export type RootStackParamList = {
   Register: undefined;
+  Login: undefined;
   ChatRoom: { roomName: string };
   RoomList: undefined;
   RoomMembers: { roomName: string };
+  UserInfo: undefined;
 };
 
 

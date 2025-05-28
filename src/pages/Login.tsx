@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
-  Image,
   Alert,
 } from 'react-native';
 import { NavigationProps } from '../Types';
@@ -16,30 +15,50 @@ import EntypoIcons from '@react-native-vector-icons/entypo';
 import { getWebSocketClient } from '../WebSocketCli';
 import { WS_URL } from '@env';
 
+type LoginProps = NavigationProps<'Login'>
 
-type RegisterProps = NavigationProps<'Register'>
-export default function RegisterScreen({ navigation }: RegisterProps) {
+export default function LoginScreen({ navigation }: LoginProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [invitationCode, setInvitationCode] = useState('');
+  const [num1, setNum1] = useState(0);
+  const [num2, setNum2] = useState(0);
+  const [userAnswer, setUserAnswer] = useState('');
+
+  useEffect(() => {
+    generateNewQuestion();
+  }, []);
+
+  const generateNewQuestion = () => {
+    setNum1(Math.floor(Math.random() * 10));
+    setNum2(Math.floor(Math.random() * 10));
+    setUserAnswer('');
+  };
 
   const handleSubmit = () => {
+    // 首先验证数学题答案
+    const correctAnswer = num1 + num2;
+    if (parseInt(userAnswer) !== correctAnswer) {
+      Alert.alert('Error', 'Incorrect answer. Please try again.');
+      generateNewQuestion();
+      return;
+    }
+
+    // 验证通过后进行登录
     console.log('Connecting to WebSocket:', WS_URL);
     getWebSocketClient().connect(WS_URL)
       .then((client) => {
-        client.sendMessage({ type: 'register', payload: { username, password, inviteCode: invitationCode } }, (response) => {
-          console.log('Register response:', response);
+        client.sendMessage({ type: 'login', payload: { username, password } }, (response) => {
+          console.log('Login response:', response);
           if (response.payload?.success) {
             navigation.replace('RoomList')
           } else {
-            Alert.alert('Error', response.payload?.message || 'Unknown error');
+            Alert.alert('Error', response.payload?.message || 'Invalid username or password');
           }
         });
       })
       .catch((error) => {
         console.error('Error connecting to WebSocket:', error);
       });
-      
   };
 
   return (
@@ -54,7 +73,7 @@ export default function RegisterScreen({ navigation }: RegisterProps) {
             <Text style={styles.logoText}>Chatify</Text>
           </View>
           
-          <Text style={styles.title}>Register</Text>
+          <Text style={styles.title}>Login</Text>
           
           <View style={styles.inputContainer}>
             <TextInput
@@ -72,23 +91,29 @@ export default function RegisterScreen({ navigation }: RegisterProps) {
               onChangeText={setPassword}
               secureTextEntry
             />
-            
-            <TextInput
-              style={styles.input}
-              placeholder="Invitation Code"
-              value={invitationCode}
-              onChangeText={setInvitationCode}
-            />
+
+            <View style={styles.verificationContainer}>
+              <Text style={styles.verificationText}>
+                Please solve: {num1} + {num2} = ?
+              </Text>
+              <TextInput
+                style={styles.verificationInput}
+                placeholder="Enter answer"
+                value={userAnswer}
+                onChangeText={setUserAnswer}
+                keyboardType="numeric"
+              />
+            </View>
             
             <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-              <Text style={styles.buttonText}>Submit</Text>
+              <Text style={styles.buttonText}>Login</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={styles.loginButton} 
-              onPress={() => navigation.replace('Login')}
+              style={styles.registerButton} 
+              onPress={() => navigation.replace('Register')}
             >
-              <Text style={styles.loginButtonText}>Already have an account? Login</Text>
+              <Text style={styles.registerButtonText}>Don't have an account? Register</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -117,30 +142,6 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     gap: 10,
   },
-  logoIcon: {
-    position: 'relative',
-    width: 40,
-    height: 40,
-    marginRight: 10,
-  },
-  bubble1: {
-    position: 'absolute',
-    top: 10,
-    left: 0,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#6B9AE8',
-  },
-  bubble2: {
-    position: 'absolute',
-    top: 0,
-    left: 16,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#6B9AE8',
-  },
   logoText: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -164,6 +165,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 16,
   },
+  verificationContainer: {
+    width: '100%',
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+  },
+  verificationText: {
+    fontSize: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  verificationInput: {
+    width: '100%',
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    backgroundColor: 'white',
+  },
   button: {
     width: '100%',
     height: 50,
@@ -178,15 +201,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  loginButton: {
+  registerButton: {
     width: '100%',
     height: 50,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
-  loginButtonText: {
+  registerButtonText: {
     color: '#6B9AE8',
     fontSize: 16,
   },
-});
+}); 

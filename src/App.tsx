@@ -13,6 +13,7 @@ import Register from './pages/Register';
 import RoomList from './pages/RoomList';
 import ChatRoom from './pages/ChatRoom';
 import RoomMembers from './pages/RoomMembers';
+import Login from './pages/Login';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -36,6 +37,11 @@ const App = () => {
       <SafeAreaProvider>
         <NavigationContainer ref={navigationRef} theme={scheme === 'dark' ? DarkTheme : DefaultTheme}>
           <Stack.Navigator>
+            <Stack.Screen
+              name="Login"
+              component={Login}
+              options={{ headerShown: false }}
+            />
             <Stack.Screen
               name="Register"
               component={Register}
